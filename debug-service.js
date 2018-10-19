@@ -3,6 +3,7 @@ import moment from "moment";
 import InMemory from "./adapters/in-memory";
 import timers from "./timers";
 import debounce from "debounce";
+import throttle from 'lodash.throttle';
 import stacktraceParser from "stacktrace-parser";
 import stringify from "json-stringify-safe";
 import StringifyDataWriter from "./data-writers/stringify-data-writer";
@@ -37,6 +38,7 @@ class DebugService {
             rowInsertDebounceMs: 200,
             logAppState: true,
             logConnection: true,
+            rateLimitingMethod: 'debounce', // 'debounce' || 'throttle'
             ...options,
         };
     }
@@ -149,7 +151,8 @@ class DebugService {
         this.rowsToInsert = this.rowsToInsert || [];
         this.rowsToInsert = this.rowsToInsert.concat(rows);
         if (!this.debouncedInsert) {
-            this.debouncedInsert = debounce(() => {
+            let rateLimiter = this.options.rateLimitingMethod === 'throttle' ? throttle : debounce;
+            this.debouncedInsert = rateLimiter(() => {
                 if (this.store && this.store.insertRows) {
                     const insertArray = this.rowsToInsert;
                     this.rowsToInsert = [];
