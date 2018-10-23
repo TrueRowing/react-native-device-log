@@ -39,6 +39,8 @@ class DebugService {
             logAppState: true,
             logConnection: true,
             rateLimitingMethod: 'debounce', // 'debounce' || 'throttle'
+            loadExistingLogsOnStart: true,
+            sortExistingLogs: true,
             ...options,
         };
     }
@@ -168,12 +170,19 @@ class DebugService {
 
     async _initalGet() {
         this.initPromise = this.store.getRows();
-        const rows = await this.initPromise;
-        this.store.setReadOnly(false);
-        const newRows = this.logRows;
-        this.logRows = this.logRows.concat(rows);
-        this.sortLogRows();
-        await this.insertStoreRows(newRows);
+        if (this.options.loadExistingLogsOnStart === true) {
+            const rows = await this.initPromise;
+            this.store.setReadOnly(false);
+            const newRows = this.logRows;
+            this.logRows = this.logRows.concat(rows);
+            if (this.options.sortExistingLogs === true) {
+                this.sortLogRows();
+            }
+            await this.insertStoreRows(newRows);
+        } else {
+            this.store.setReadOnly(false);
+            await this.insertStoreRows(this.logRows);
+        }
         if (this.store.initalDataRead) {
             await this.store.initalDataRead(this.logRows);
         }
@@ -338,7 +347,7 @@ class DebugService {
                     console[this.options.logToConsoleMethod](...logRows);
                 }
             }
-   
+
         }
     }
 
