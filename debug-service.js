@@ -35,12 +35,14 @@ class DebugService {
             logRNErrors: false,
             maxNumberToRender: 0,
             maxNumberToPersist: 0,
+            maxNumberToKeepInMemory: 0,
             rowInsertDebounceMs: 200,
             logAppState: true,
             logConnection: true,
             rateLimitingMethod: 'debounce', // 'debounce' || 'throttle'
             loadExistingLogsOnStart: true,
             sortExistingLogs: true,
+            maxMessageLength: 12000,
             ...options,
         };
     }
@@ -353,12 +355,16 @@ class DebugService {
 
     _parseDataToString(data) {
         if (typeof data === "string" || data instanceof String) {
-            return data;
+            if (this.options.maxMessageLength > 0 && data.length > this.options.maxMessageLength) {
+                return data.substring(0, this.options.maxMessageLength);
+            } else {
+                return data;
+            }
         } else {
             let dataAsString = stringify(data, null, "  "); //FYI: spaces > tabs
-            if (dataAsString && dataAsString.length > 12000) {
+            if (dataAsString && dataAsString.length > this.options.maxMessageLength) {
                 dataAsString =
-                    dataAsString.substring(0, 12000) +
+                    dataAsString.substring(0, this.options.maxMessageLength) +
                     "...(Cannot display more RN-device-log)";
             }
             return dataAsString;
@@ -366,7 +372,11 @@ class DebugService {
     }
 
     _appendToLog(logRows) {
-        this.logRows = logRows.concat(this.logRows);
+        if (this.options.maxNumberToKeepInMemory > 0) {
+            this.logRows = logRows.concat(this.logRows).slice(0, this.options.maxNumberToKeepInMemory);
+        } else {
+            this.logRows = logRows.concat(this.logRows);
+        }
         this.insertStoreRows(logRows);
         this.emitDebugRowsChanged(this.logRows);
     }
